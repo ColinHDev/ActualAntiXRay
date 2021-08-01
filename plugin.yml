@@ -1,0 +1,8 @@
+name: CAntiCheat
+main: ColinHDev\CAntiCheat\CAntiCheat
+version: "1.0.0"
+
+api: 4.0.0
+
+author: ColinHDev
+website: https://github.com/ColinHDev

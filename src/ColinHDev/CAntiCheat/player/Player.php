@@ -202,6 +202,7 @@ class Player extends PMMP_PLAYER {
         }
         $existing->cancel();
         unset($caches[$chunkHash]);
+        $property->setValue($chunkCache, $caches);
 
         $this->request($chunkCache, $chunkX, $chunkZ)->onResolve(...$existing->getResolveCallbacks());
     }

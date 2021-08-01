@@ -96,20 +96,20 @@ class ChunkRequestTask extends AsyncTask {
         $serializedChunks[World::chunkHash($chunkX, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunk);
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
-        $chunkAround = $world->loadChunk($chunkX + 1, $chunkZ);
+        $chunkAround = $world->getChunk($chunkX + 1, $chunkZ);
         if ($chunkAround !== null) {
             $serializedChunks[World::chunkHash($chunkX + 1, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
         }
-        $chunkAround = $world->loadChunk($chunkX - 1, $chunkZ);
+        $chunkAround = $world->getChunk($chunkX - 1, $chunkZ);
         if ($chunkAround !== null) {
             $serializedChunks[World::chunkHash($chunkX - 1, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
         }
 
-        $chunkAround = $world->loadChunk($chunkX, $chunkZ + 1);
+        $chunkAround = $world->getChunk($chunkX, $chunkZ + 1);
         if ($chunkAround !== null) {
             $serializedChunks[World::chunkHash($chunkX, $chunkZ + 1)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
         }
-        $chunkAround = $world->loadChunk($chunkX, $chunkZ - 1);
+        $chunkAround = $world->getChunk($chunkX, $chunkZ - 1);
         if ($chunkAround !== null) {
             $serializedChunks[World::chunkHash($chunkX, $chunkZ - 1)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
         }

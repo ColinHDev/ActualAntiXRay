@@ -2,7 +2,10 @@
 
 namespace ColinHDev\CAntiCheat\tasks;
 
+use ColinHDev\CAntiCheat\utils\SubChunkExplorer;
 use pocketmine\block\VanillaBlocks;
+use pocketmine\math\Facing;
+use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;
 use pocketmine\network\mcpe\convert\GlobalItemTypeDictionary;
@@ -15,7 +18,6 @@ use pocketmine\scheduler\AsyncTask;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
 use pocketmine\world\SimpleChunkManager;
-use pocketmine\world\utils\SubChunkExplorer;
 use pocketmine\world\utils\SubChunkExplorerStatus;
 use pocketmine\world\World;
 
@@ -30,11 +32,22 @@ class ChunkRequestTask extends AsyncTask {
     private static array $blocksToReplaceWith = [];
     private static int $blocksToReplaceWithCount;
     private static int $blockChangeChance = 75;
+    private static array $blockSides = [
+        Facing::UP,
+        Facing::DOWN,
+        Facing::NORTH,
+        Facing::SOUTH,
+        Facing::WEST,
+        Facing::EAST
+    ];
 
     private int $worldMinY;
     private int $worldMaxY;
+
     private int $chunkX;
     private int $chunkZ;
+    private int $subChunkCount;
+
     private string $chunks;
     private string $tiles;
 
@@ -76,6 +89,7 @@ class ChunkRequestTask extends AsyncTask {
 
         $this->chunkX = $chunkX;
         $this->chunkZ = $chunkZ;
+        $this->subChunkCount = count($chunk->getSubChunks());
 
         $serializedChunks = [];
 
@@ -110,76 +124,13 @@ class ChunkRequestTask extends AsyncTask {
 
     public function onRun() : void {
         $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
-        foreach (unserialize($this->chunks) as $hash => $serializedChunk) {
+        foreach (unserialize($this->chunks, ["allowed_classes" => false]) as $hash => $serializedChunk) {
             World::getXZ($hash, $chunkX, $chunkZ);
             $manager->setChunk($chunkX, $chunkZ, FastChunkSerializer::deserialize($serializedChunk));
         }
 
         $explorer = new SubChunkExplorer($manager);
-        $explorerMovedStatus = [SubChunkExplorerStatus::OK, SubChunkExplorerStatus::MOVED];
-        for ($x = $this->chunkX * 16; $x < $this->chunkX * 16 + 16; $x++) {
-            for ($z = $this->chunkZ * 16; $z < $this->chunkZ * 16 + 16; $z++) {
-                for ($y = $this->worldMinY; $y < $this->worldMaxY; $y++) {
-
-                    if (in_array($explorer->moveTo($x, $y, $z), $explorerMovedStatus, true)) {
-                        if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                        $blockId = $explorer->currentSubChunk->getFullBlock($x & 0x0f, $y & 0x0f, $z & 0x0f);
-                        if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                    }
-
-                    if (in_array($explorer->moveTo($x + 1, $y, $z), $explorerMovedStatus, true)) {
-                        if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                        $blockId = $explorer->currentSubChunk->getFullBlock(($x + 1) & 0x0f, $y & 0x0f, $z & 0x0f);
-                        if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                    }
-
-                    if (in_array($explorer->moveTo($x - 1, $y, $z), $explorerMovedStatus, true)) {
-                        if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                        $blockId = $explorer->currentSubChunk->getFullBlock(($x - 1) & 0x0f, $y & 0x0f, $z & 0x0f);
-                        if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                    }
-
-                    if (in_array($explorer->moveTo($x, $y, $z + 1), $explorerMovedStatus, true)) {
-                        if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                        $blockId = $explorer->currentSubChunk->getFullBlock($x & 0x0f, $y & 0x0f, ($z + 1) & 0x0f);
-                        if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                    }
-
-                    if (in_array($explorer->moveTo($x, $y, $z - 1), $explorerMovedStatus, true)) {
-                        if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                        $blockId = $explorer->currentSubChunk->getFullBlock($x & 0x0f, $y & 0x0f, ($z - 1) & 0x0f);
-                        if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                    }
-
-                    if ($y < ($this->worldMaxY - 1)) {
-                        if (in_array($explorer->moveTo($x, $y + 1, $z), $explorerMovedStatus, true)) {
-                            if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                            $blockId = $explorer->currentSubChunk->getFullBlock($x & 0x0f, ($y + 1) & 0x0f, $z & 0x0f);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                        }
-                    }
-
-                    if ($y > $this->worldMinY) {
-                        if (in_array($explorer->moveTo($x, $y - 1, $z), $explorerMovedStatus, true)) {
-                            if ($explorer->currentSubChunk->isEmptyFast()) continue;
-                            $blockId = $explorer->currentSubChunk->getFullBlock($x & 0x0f, ($y - 1) & 0x0f, $z & 0x0f);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-                        }
-                    }
-
-                    if (in_array($explorer->moveTo($x, $y, $z), $explorerMovedStatus, true)) {
-                        if (random_int(1, 100) > self::$blockChangeChance) continue;
-                        if (!isset(self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)])) continue;
-                        $explorer->currentSubChunk->setFullBlock($x & 0x0f, $y & 0x0f, $z & 0x0f, self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)]);
-                    }
-                }
-            }
-        }
-
-
-        /*for ($s = 0; $s < $this->subChunkCount; $s++) {
-            if (!in_array($explorer->moveToChunk($this->chunkX, $s, $this->chunkZ), $explorerMovedStatus, true)) continue;
-            if ($explorer->currentSubChunk->isEmptyFast()) continue;
+        for ($s = 0; $s < $this->subChunkCount; $s++) {
             for ($x = 0; $x < 16; $x++) {
                 for ($z = 0; $z < 16; $z++) {
                     for ($y = 0; $y < 16; $y++) {
@@ -187,87 +138,21 @@ class ChunkRequestTask extends AsyncTask {
                         if ($s === 0 && $y === 0) continue;
                         if ($s + 1 === $this->subChunkCount && $y === 15) continue;
 
-                        $cblockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y, $z);
-                        if (!in_array($cblockId, self::$blocksToReplace, true)) {
-                            $y++;
-                            continue;
-                        }
-
-                        if ($x === 0) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x + 1, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX - 1, $s, $this->chunkZ, 15, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else if ($x === 15) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX + 1, $s, $this->chunkZ, 0, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x - 1, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x + 1, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x - 1, $y, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        }
-
-                        if ($z === 0) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y, $z + 1);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ - 1, $x, $y, 15);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else if ($z === 15) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ + 1, $x, $y, 0);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y, $z - 1);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y, $z + 1);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y, $z - 1);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        }
-
-                        if ($y === 0) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y + 1, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) {
-                                $y++;
-                                continue;
-                            }
-
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s - 1, $this->chunkZ, $x, 15, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else if ($y === 15) {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s + 1, $this->chunkZ, $x, 0, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true)) continue;
-
-                        } else {
-                            $blockId = $this->getFullBlockAtSubChunk($explorer, $this->chunkX, $s, $this->chunkZ, $x, $y + 1, $z);
-                            if (!in_array($blockId, self::$blocksToReplace, true))  {
-                                $y++;
-                                continue;
-                            }
-                        }
-
+                        $vector = new Vector3($x, $y, $z);
+                        if (!$this->isBlockReplaceable($explorer, $vector, $s)) continue;
                         if (random_int(1, 100) > self::$blockChangeChance) continue;
-                        if (!isset(self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)])) continue;
-                        $explorer->currentSubChunk->setFullBlock($x, $y, $z, self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)]);
+
+                        foreach (self::$blockSides as $side) {
+                            $blockSide = $vector->getSide($side);
+                            if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) continue 2;
+                        }
+
+                        $randomBlockId = self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)];
+                        $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
                     }
                 }
             }
-        }*/
+        }
 
         /** @var Chunk $chunk */
         $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
@@ -291,22 +176,48 @@ class ChunkRequestTask extends AsyncTask {
 
     /**
      * @param SubChunkExplorer  $explorer
-     * @param int               $chunkX
+     * @param Vector3           $vector
      * @param int               $chunkY
-     * @param int               $chunkZ
-     * @param int               $x
-     * @param int               $y
-     * @param int               $z
-     * @return int
-     *
-    private function getFullBlockAtSubChunk(SubChunkExplorer $explorer, int $chunkX, int $chunkY, int $chunkZ, int $x, int $y, int $z) : int {
+     * @return bool
+     */
+    private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $chunkY) : bool {
+        $chunkX = $this->chunkX;
+        $x = $vector->getX();
+        if ($x < 0) {
+            $x = 15;
+            $chunkX--;
+        } else if ($x > 15) {
+            $x = 0;
+            $chunkX++;
+        }
+
+        $chunkZ = $this->chunkZ;
+        $z = $vector->getZ();
+        if ($z < 0) {
+            $z = 15;
+            $chunkZ--;
+        } else if ($z > 15) {
+            $z = 0;
+            $chunkZ++;
+        }
+
+        $y = $vector->getY();
+        if ($y < 0) {
+            $y = 15;
+            $chunkY--;
+        } else if ($y > 15) {
+            $y = 0;
+            $chunkY++;
+        }
+
+        static $explorerMovedStatus = [SubChunkExplorerStatus::OK, SubChunkExplorerStatus::MOVED];
         if ($explorer->getCurrentX() !== $chunkX || $explorer->getCurrentY() !== $chunkY || $explorer->getCurrentZ() !== $chunkZ) {
-            if (!in_array($explorer->moveToChunk($chunkX, $chunkY, $chunkZ), [SubChunkExplorerStatus::OK, SubChunkExplorerStatus::MOVED], true)) {
-                return 0;
+            if (!in_array($explorer->moveToChunk($chunkX, $chunkY, $chunkZ), $explorerMovedStatus, true)) {
+                return false;
             }
         }
-        return $explorer->currentSubChunk->getFullBlock($x, $y, $z);
-    }*/
+        return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$blocksToReplace, true);
+    }
 
     public function onError() : void{
         /**

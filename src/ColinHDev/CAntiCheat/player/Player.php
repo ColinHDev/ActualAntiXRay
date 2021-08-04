@@ -129,7 +129,7 @@ class Player extends PMMP_PLAYER {
         $property->setAccessible(true);
         $world = $property->getValue($chunkCache);
 
-        $world->registerChunkListener($this, $chunkX, $chunkZ);
+        $world->registerChunkListener($chunkCache, $chunkX, $chunkZ);
         $chunk = $world->getChunk($chunkX, $chunkZ);
         if ($chunk === null) {
             throw new \InvalidArgumentException("Cannot request an unloaded chunk");

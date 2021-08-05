@@ -2,24 +2,32 @@
 
 namespace ColinHDev\CAntiCheat\listener;
 
+use ColinHDev\CAntiCheat\ResourceManager;
 use pocketmine\event\Listener;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;
-use pocketmine\network\mcpe\protocol\PacketDecodeException;
-use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
-use pocketmine\network\PacketHandlingException;
 
 class DataPacketSendListener implements Listener {
 
     public function onDataPacketSend(DataPacketSendEvent $event) : void {
+        $standard = ResourceManager::getInstance()->getAntiXRayStandard();
+        $worlds = ResourceManager::getInstance()->getWorlds();
         $packets = $event->getPackets();
         foreach ($packets as $packet) {
             if (!$packet instanceof UpdateBlockPacket) continue;
             foreach ($this->getAllSidesOfVector(new Vector3($packet->x, $packet->y, $packet->z)) as $vector) {
                 $vectors = array_merge([$vector], $this->getAllSidesOfVector($vector));
                 foreach ($event->getTargets() as $target) {
-                    foreach ($target->getPlayer()->getWorld()->createBlockUpdatePackets($vectors) as $updateBlockPacket) {
+                    $world = $target->getPlayer()->getWorld();
+                    if (
+                        ($standard && in_array($world->getFolderName(), $worlds, true))
+                        ||
+                        (!$standard && !in_array($world->getFolderName(), $worlds, true))
+                    ) {
+                        continue;
+                    }
+                    foreach ($world->createBlockUpdatePackets($vectors) as $updateBlockPacket) {
                         $target->addToSendBuffer($updateBlockPacket);
                     }
                 }

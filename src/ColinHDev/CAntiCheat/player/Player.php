@@ -2,6 +2,7 @@
 
 namespace ColinHDev\CAntiCheat\player;
 
+use ColinHDev\CAntiCheat\ResourceManager;
 use ColinHDev\CAntiCheat\tasks\ChunkRequestTask;
 use pocketmine\network\mcpe\cache\ChunkCache;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
@@ -20,6 +21,17 @@ class Player extends PMMP_PLAYER {
      */
     protected function requestChunks() : void{
         if(!$this->isConnected()){
+            return;
+        }
+
+        $standard = ResourceManager::getInstance()->getAntiXRayStandard();
+        $worlds = ResourceManager::getInstance()->getWorlds();
+        if (
+            ($standard && in_array($this->getWorld()->getFolderName(), $worlds, true))
+            ||
+            (!$standard && !in_array($this->getWorld()->getFolderName(), $worlds, true))
+        ) {
+            parent::requestChunks();
             return;
         }
 

@@ -32,7 +32,7 @@ class ResourceManager {
     }
 
     /**
-     * @return array | string[]
+     * @return string[]
      */
     public function getWorlds() : array {
         return $this->worlds;

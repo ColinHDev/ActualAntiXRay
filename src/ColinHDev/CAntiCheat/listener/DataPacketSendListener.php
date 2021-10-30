@@ -16,7 +16,7 @@ class DataPacketSendListener implements Listener {
         $packets = $event->getPackets();
         foreach ($packets as $packet) {
             if (!$packet instanceof UpdateBlockPacket) continue;
-            foreach ($this->getAllSidesOfVector(new Vector3($packet->x, $packet->y, $packet->z)) as $vector) {
+            foreach ($this->getAllSidesOfVector(new Vector3($packet->blockPosition->getX(), $packet->blockPosition->getY(), $packet->blockPosition->getZ())) as $vector) {
                 $vectors = array_merge([$vector], $this->getAllSidesOfVector($vector));
                 foreach ($event->getTargets() as $target) {
                     $world = $target->getPlayer()->getWorld();
@@ -36,8 +36,7 @@ class DataPacketSendListener implements Listener {
     }
 
     /**
-     * @param Vector3 $vector3
-     * @return array | Vector3[]
+     * @return Vector3[]
      */
     private function getAllSidesOfVector(Vector3 $vector3) : array {
         $floorX = $vector3->getFloorX();

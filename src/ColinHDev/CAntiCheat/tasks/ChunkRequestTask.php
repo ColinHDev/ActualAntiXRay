@@ -93,25 +93,25 @@ class ChunkRequestTask extends AsyncTask {
 
         $serializedChunks = [];
 
-        $serializedChunks[World::chunkHash($chunkX, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunk);
+        $serializedChunks[World::chunkHash($chunkX, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunk);
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
         $chunkAround = $world->getChunk($chunkX + 1, $chunkZ);
         if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX + 1, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
+            $serializedChunks[World::chunkHash($chunkX + 1, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunkAround);
         }
         $chunkAround = $world->getChunk($chunkX - 1, $chunkZ);
         if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX - 1, $chunkZ)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
+            $serializedChunks[World::chunkHash($chunkX - 1, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunkAround);
         }
 
         $chunkAround = $world->getChunk($chunkX, $chunkZ + 1);
         if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX, $chunkZ + 1)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
+            $serializedChunks[World::chunkHash($chunkX, $chunkZ + 1)] = FastChunkSerializer::serializeTerrain($chunkAround);
         }
         $chunkAround = $world->getChunk($chunkX, $chunkZ - 1);
         if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX, $chunkZ - 1)] = FastChunkSerializer::serializeWithoutLight($chunkAround);
+            $serializedChunks[World::chunkHash($chunkX, $chunkZ - 1)] = FastChunkSerializer::serializeTerrain($chunkAround);
         }
 
         $this->chunks = serialize($serializedChunks);
@@ -126,7 +126,7 @@ class ChunkRequestTask extends AsyncTask {
         $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
         foreach (unserialize($this->chunks, ["allowed_classes" => false]) as $hash => $serializedChunk) {
             World::getXZ($hash, $chunkX, $chunkZ);
-            $manager->setChunk($chunkX, $chunkZ, FastChunkSerializer::deserialize($serializedChunk));
+            $manager->setChunk($chunkX, $chunkZ, FastChunkSerializer::deserializeTerrain($serializedChunk));
         }
 
         $explorer = new SubChunkExplorer($manager);
@@ -158,20 +158,8 @@ class ChunkRequestTask extends AsyncTask {
         $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
         $subCount = ChunkSerializer::getSubChunkCount($chunk);
         $encoderContext = new PacketSerializerContext(GlobalItemTypeDictionary::getInstance()->getDictionary());
-        $payload = ChunkSerializer::serializeFullChunk(
-            $chunk,
-            RuntimeBlockMapping::getInstance(),
-            $encoderContext,
-            $this->tiles
-        );
-        $this->setResult(
-            $this->compressor->compress(
-                PacketBatch::fromPackets(
-                    $encoderContext,
-                    LevelChunkPacket::withoutCache($this->chunkX, $this->chunkZ, $subCount, $payload)
-                )->getBuffer()
-            )
-        );
+        $payload = ChunkSerializer::serializeFullChunk($chunk, RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
+        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::withoutCache($this->chunkX, $this->chunkZ, $subCount, $payload))->getBuffer()));
     }
 
     /**

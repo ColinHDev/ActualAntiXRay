@@ -39,8 +39,12 @@ class Player extends PMMP_PLAYER {
 
         $count = 0;
         $world = $this->getWorld();
+        $property = new ReflectionProperty(PMMP_PLAYER::class, "activeChunkGenerationRequests");
+        $property->setAccessible(true);
+        $activeChunkGenerationRequests = $property->getValue($this);
+        $limit = $this->chunksPerTick - count($activeChunkGenerationRequests);
         foreach($this->loadQueue as $index => $distance){
-            if($count >= $this->chunksPerTick){
+            if($count >= $limit){
                 break;
             }
 
@@ -51,7 +55,10 @@ class Player extends PMMP_PLAYER {
 
             ++$count;
 
-            $this->usedChunks[$index] = UsedChunkStatus::NEEDED();
+            $this->usedChunks[$index] = UsedChunkStatus::REQUESTED_GENERATION();
+            $activeChunkGenerationRequests[$index] = true;
+            $property->setValue($this, $activeChunkGenerationRequests);
+            unset($this->loadQueue[$index]);
             $this->getWorld()->registerChunkLoader($this->chunkLoader, $X, $Z, true);
             $this->getWorld()->registerChunkListener($this, $X, $Z);
 
@@ -60,15 +67,18 @@ class Player extends PMMP_PLAYER {
                     if(!$this->isConnected() || !isset($this->usedChunks[$index]) || $world !== $this->getWorld()){
                         return;
                     }
-                    if(!$this->usedChunks[$index]->equals(UsedChunkStatus::NEEDED())){
-                        //TODO: make this an error
-                        //we may have added multiple completion handlers, since the Player keeps re-requesting chunks
-                        //it doesn't have yet (a relic from the old system, but also currently relied on for chunk resends).
-                        //in this event, make sure we don't try to send the chunk multiple times.
+                    if(!$this->usedChunks[$index]->equals(UsedChunkStatus::REQUESTED_GENERATION())){
+                        //We may have previously requested this, decided we didn't want it, and then decided we did want
+                        //it again, all before the generation request got executed. In that case, the promise would have
+                        //multiple callbacks for this player. In that case, only the first one matters.
                         return;
                     }
-                    unset($this->loadQueue[$index]);
-                    $this->usedChunks[$index] = UsedChunkStatus::REQUESTED();
+                    $property = new ReflectionProperty(PMMP_PLAYER::class, "activeChunkGenerationRequests");
+                    $property->setAccessible(true);
+                    $activeChunkGenerationRequests = $property->getValue($this);
+                    unset($activeChunkGenerationRequests[$index]);
+                    $property->setValue($this, $activeChunkGenerationRequests);
+                    $this->usedChunks[$index] = UsedChunkStatus::REQUESTED_SENDING();
 
                     $this->startUsingChunk($X, $Z, function() use ($X, $Z, $index) : void{
                         $this->usedChunks[$index] = UsedChunkStatus::SENT();
@@ -113,7 +123,7 @@ class Player extends PMMP_PLAYER {
                     $this->logger->debug("Tried to send no-longer-active chunk $chunkX $chunkZ in world " . $world->getFolderName());
                     return;
                 }
-                if(!$status->equals(UsedChunkStatus::REQUESTED())){
+                if(!$status->equals(UsedChunkStatus::REQUESTED_SENDING())){
                     //TODO: make this an error
                     //this could be triggered due to the shitty way that chunk resends are handled
                     //right now - not because of the spammy re-requesting, but because the chunk status reverts

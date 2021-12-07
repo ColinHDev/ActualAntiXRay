@@ -101,6 +101,17 @@ class ChunkRequestTask extends AsyncTask {
 
         $explorer = new SubChunkExplorer($manager);
         for ($subChunkY = 0; $subChunkY < $this->subChunkCount; $subChunkY++) {
+
+            // By using ChunkSerializer::getSubChunkCount() for determining the number of subchunks, we already strip
+            // away all upper subchunks which are empty. But it could also be the case, that a lower subchunk is empty,
+            // that's why we check here again.
+            $moved = $explorer->moveToChunk($this->chunkX, $subChunkY, $this->chunkZ);
+            if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
+                if ($explorer->currentSubChunk->isEmptyFast()) {
+                    continue;
+                }
+            }
+
             for ($x = 0; $x < 16; $x++) {
                 for ($z = 0; $z < 16; $z++) {
                     for ($y = 0; $y < 16; $y++) {

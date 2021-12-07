@@ -6,6 +6,7 @@ use ColinHDev\AntiXRay\utils\SubChunkExplorer;
 use pocketmine\block\VanillaBlocks;
 use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
+use pocketmine\network\mcpe\ChunkRequestTask as PMMPChunkRequestTask;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;
 use pocketmine\network\mcpe\convert\GlobalItemTypeDictionary;
@@ -14,7 +15,6 @@ use pocketmine\network\mcpe\protocol\LevelChunkPacket;
 use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializerContext;
 use pocketmine\network\mcpe\serializer\ChunkSerializer;
-use pocketmine\scheduler\AsyncTask;
 use pocketmine\utils\AssumptionFailedError;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
@@ -22,10 +22,7 @@ use pocketmine\world\SimpleChunkManager;
 use pocketmine\world\utils\SubChunkExplorerStatus;
 use pocketmine\world\World;
 
-class ChunkRequestTask extends AsyncTask {
-
-    private const TLS_KEY_PROMISE = "promise";
-    private const TLS_KEY_ERROR_HOOK = "errorHook";
+class ChunkRequestTask extends PMMPChunkRequestTask {
 
     /** @var int[] */
     private static array $replaceableBlocks = [];
@@ -36,16 +33,13 @@ class ChunkRequestTask extends AsyncTask {
     private int $worldMinY;
     private int $worldMaxY;
 
-    private int $chunkX;
-    private int $chunkZ;
     private int $subChunkCount;
 
-    private string $chunks;
+    private string $adjacentChunks;
     private string $tiles;
 
-    private Compressor $compressor;
-
     public function __construct(World $world, int $chunkX, int $chunkZ, Chunk $chunk, CompressBatchPromise $promise, Compressor $compressor, ?\Closure $onError = null) {
+        parent::__construct($chunkX, $chunkZ, $chunk, $promise, $compressor, $onError);
         if (empty(self::$replaceableBlocks)) {
             self::$replaceableBlocks = [
                 VanillaBlocks::STONE()->getFullId(),
@@ -72,28 +66,25 @@ class ChunkRequestTask extends AsyncTask {
         $this->chunkZ = $chunkZ;
         $this->subChunkCount = ChunkSerializer::getSubChunkCount($chunk);
 
-        $this->chunks = igbinary_serialize(
+        $this->adjacentChunks = igbinary_serialize(
             array_map(
                 fn (?Chunk $c) => $c !== null ? FastChunkSerializer::serializeTerrain($c) : null,
-                array_merge(
-                    [World::chunkHash($chunkX, $chunkZ) => $chunk],
-                    $world->getAdjacentChunks($chunkX, $chunkZ)
-                )
+                $world->getAdjacentChunks($chunkX, $chunkZ)
             )) ?? throw new AssumptionFailedError("igbinary_serialize() returned null");
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
         $this->compressor = $compressor;
-
-        $this->storeLocal(self::TLS_KEY_PROMISE, $promise);
-        $this->storeLocal(self::TLS_KEY_ERROR_HOOK, $onError);
     }
 
     public function onRun() : void {
-        $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
         $chunks = array_map(
             fn (?string $serialized) => $serialized !== null ? FastChunkSerializer::deserializeTerrain($serialized) : null,
-            igbinary_unserialize($this->chunks)
+            array_merge(
+                [World::chunkHash($this->chunkX, $this->chunkZ) => $this->chunk],
+                igbinary_unserialize($this->adjacentChunks)
+            )
         );
+        $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
         foreach ($chunks as $chunkHash => $chunk) {
             World::getXZ($chunkHash, $chunkX, $chunkZ);
             $manager->setChunk($chunkX, $chunkZ, $chunk);
@@ -194,22 +185,5 @@ class ChunkRequestTask extends AsyncTask {
             return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$replaceableBlocks, true);
         }
         return false;
-    }
-
-    public function onError() : void{
-        /**
-         * @var \Closure|null $hook
-         * @phpstan-var (\Closure() : void)|null $hook
-         */
-        $hook = $this->fetchLocal(self::TLS_KEY_ERROR_HOOK);
-        if($hook !== null){
-            $hook();
-        }
-    }
-
-    public function onCompletion() : void{
-        /** @var CompressBatchPromise $promise */
-        $promise = $this->fetchLocal(self::TLS_KEY_PROMISE);
-        $promise->resolve($this->getResult());
     }
 }

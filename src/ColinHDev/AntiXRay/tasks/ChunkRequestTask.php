@@ -45,16 +45,6 @@ class ChunkRequestTask extends AsyncTask {
 
     private Compressor $compressor;
 
-    /**
-     * ChunkRequestTask constructor.
-     * @param World $world
-     * @param int $chunkX
-     * @param int $chunkZ
-     * @param Chunk $chunk
-     * @param CompressBatchPromise $promise
-     * @param Compressor $compressor
-     * @param \Closure|null $onError
-     */
     public function __construct(World $world, int $chunkX, int $chunkZ, Chunk $chunk, CompressBatchPromise $promise, Compressor $compressor, ?\Closure $onError = null) {
         if (empty(self::$blocksToReplace)) {
             self::$blocksToReplace = [
@@ -158,12 +148,6 @@ class ChunkRequestTask extends AsyncTask {
         $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create($this->chunkX, $this->chunkZ, $this->subChunkCount, null, $payload))->getBuffer()));
     }
 
-    /**
-     * @param SubChunkExplorer  $explorer
-     * @param Vector3           $vector
-     * @param int               $chunkY
-     * @return bool
-     */
     private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $chunkY) : bool {
         $chunkX = $this->chunkX;
         $x = $vector->getX();

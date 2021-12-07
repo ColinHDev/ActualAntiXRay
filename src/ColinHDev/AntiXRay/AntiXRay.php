@@ -10,19 +10,13 @@ class AntiXRay extends PluginBase {
 
     private static AntiXRay $instance;
 
-    /**
-     * @return AntiXRay
-     */
     public static function getInstance() : AntiXRay {
         return self::$instance;
     }
 
-    public function onLoad() : void {
+    public function onEnable() : void {
         self::$instance = $this;
         ResourceManager::getInstance();
-    }
-
-    public function onEnable() : void {
         $this->getServer()->getPluginManager()->registerEvents(new DataPacketSendListener(), $this);
         $this->getServer()->getPluginManager()->registerEvents(new PlayerCreationListener(), $this);
     }

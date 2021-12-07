@@ -15,6 +15,7 @@ use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializerContext;
 use pocketmine\network\mcpe\serializer\ChunkSerializer;
 use pocketmine\scheduler\AsyncTask;
+use pocketmine\utils\AssumptionFailedError;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
 use pocketmine\world\SimpleChunkManager;
@@ -89,32 +90,17 @@ class ChunkRequestTask extends AsyncTask {
 
         $this->chunkX = $chunkX;
         $this->chunkZ = $chunkZ;
-        $this->subChunkCount = count($chunk->getSubChunks());
+        $this->subChunkCount = ChunkSerializer::getSubChunkCount($chunk);
 
-        $serializedChunks = [];
-
-        $serializedChunks[World::chunkHash($chunkX, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunk);
+        $this->chunks = igbinary_serialize(
+            array_map(
+                fn (?Chunk $c) => $c !== null ? FastChunkSerializer::serializeTerrain($c) : null,
+                array_merge(
+                    [World::chunkHash($chunkX, $chunkZ) => $chunk],
+                    $world->getAdjacentChunks($chunkX, $chunkZ)
+                )
+            )) ?? throw new AssumptionFailedError("igbinary_serialize() returned null");
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
-
-        $chunkAround = $world->getChunk($chunkX + 1, $chunkZ);
-        if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX + 1, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunkAround);
-        }
-        $chunkAround = $world->getChunk($chunkX - 1, $chunkZ);
-        if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX - 1, $chunkZ)] = FastChunkSerializer::serializeTerrain($chunkAround);
-        }
-
-        $chunkAround = $world->getChunk($chunkX, $chunkZ + 1);
-        if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX, $chunkZ + 1)] = FastChunkSerializer::serializeTerrain($chunkAround);
-        }
-        $chunkAround = $world->getChunk($chunkX, $chunkZ - 1);
-        if ($chunkAround !== null) {
-            $serializedChunks[World::chunkHash($chunkX, $chunkZ - 1)] = FastChunkSerializer::serializeTerrain($chunkAround);
-        }
-
-        $this->chunks = serialize($serializedChunks);
 
         $this->compressor = $compressor;
 
@@ -124,9 +110,13 @@ class ChunkRequestTask extends AsyncTask {
 
     public function onRun() : void {
         $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
-        foreach (unserialize($this->chunks, ["allowed_classes" => false]) as $hash => $serializedChunk) {
-            World::getXZ($hash, $chunkX, $chunkZ);
-            $manager->setChunk($chunkX, $chunkZ, FastChunkSerializer::deserializeTerrain($serializedChunk));
+        $chunks = array_map(
+            fn (?string $serialized) => $serialized !== null ? FastChunkSerializer::deserializeTerrain($serialized) : null,
+            igbinary_unserialize($this->chunks)
+        );
+        foreach ($chunks as $chunkHash => $chunk) {
+            World::getXZ($chunkHash, $chunkX, $chunkZ);
+            $manager->setChunk($chunkX, $chunkZ, $chunk);
         }
 
         $explorer = new SubChunkExplorer($manager);
@@ -154,12 +144,9 @@ class ChunkRequestTask extends AsyncTask {
             }
         }
 
-        /** @var Chunk $chunk */
-        $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
-        $subCount = ChunkSerializer::getSubChunkCount($chunk);
         $encoderContext = new PacketSerializerContext(GlobalItemTypeDictionary::getInstance()->getDictionary());
-        $payload = ChunkSerializer::serializeFullChunk($chunk, RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
-        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::withoutCache($this->chunkX, $this->chunkZ, $subCount, $payload))->getBuffer()));
+        $payload = ChunkSerializer::serializeFullChunk($manager->getChunk($this->chunkX, $this->chunkZ), RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
+        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create($this->chunkX, $this->chunkZ, $this->subChunkCount, null, $payload))->getBuffer()));
     }
 
     /**
@@ -218,7 +205,7 @@ class ChunkRequestTask extends AsyncTask {
         }
     }
 
-    public function onCompletion() : void {
+    public function onCompletion() : void{
         /** @var CompressBatchPromise $promise */
         $promise = $this->fetchLocal(self::TLS_KEY_PROMISE);
         $promise->resolve($this->getResult());

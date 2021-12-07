@@ -121,7 +121,12 @@ class ChunkRequestTask extends AsyncTask {
                         if ($s + 1 === $this->subChunkCount && $y === 15) continue;
 
                         $vector = new Vector3($x, $y, $z);
-                        if (!$this->isBlockReplaceable($explorer, $vector, $s)) continue;
+                        if (!$this->isBlockReplaceable($explorer, $vector, $s)) {
+                            // If the current block is not replaceable, we can increment the y coordinate by one,
+                            // as we can skip the following loop which would check that block again as block below.
+                            $y++;
+                            continue;
+                        }
                         if (mt_rand(1, 100) > self::$blockChangeChance) continue;
 
                         foreach (Facing::ALL as $facing) {

@@ -126,7 +126,16 @@ class ChunkRequestTask extends AsyncTask {
 
                         foreach (Facing::ALL as $facing) {
                             $blockSide = $vector->getSide($facing);
-                            if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) continue 2;
+                            if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) {
+                                if ($facing === Facing::UP) {
+                                    // If the block above is not replaceable, we can increment the y coordinate by two,
+                                    // as we can skip the following two loops which would check that block again.
+                                    // First, as the "main" block, then as the block below.
+                                    $y += 2;
+                                    continue 2;
+                                }
+                                continue 2;
+                            }
                         }
 
                         $randomBlockId = self::$blocksToReplaceWith[mt_rand(0, self::$blocksToReplaceWithCount - 1)];

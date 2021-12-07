@@ -28,9 +28,9 @@ class ChunkRequestTask extends AsyncTask {
     private const TLS_KEY_ERROR_HOOK = "errorHook";
 
     /** @var int[] */
-    private static array $blocksToReplace = [];
+    private static array $replaceableBlocks = [];
     /** @var int[] */
-    private static array $blocksToReplaceWith = [];
+    private static array $replacingBlocks = [];
     private static int $blockChangeChance = 75;
 
     private int $worldMinY;
@@ -46,15 +46,15 @@ class ChunkRequestTask extends AsyncTask {
     private Compressor $compressor;
 
     public function __construct(World $world, int $chunkX, int $chunkZ, Chunk $chunk, CompressBatchPromise $promise, Compressor $compressor, ?\Closure $onError = null) {
-        if (empty(self::$blocksToReplace)) {
-            self::$blocksToReplace = [
+        if (empty(self::$replaceableBlocks)) {
+            self::$replaceableBlocks = [
                 VanillaBlocks::STONE()->getFullId(),
                 VanillaBlocks::DIRT()->getFullId(),
                 VanillaBlocks::GRAVEL()->getFullId()
             ];
         }
-        if (empty(self::$blocksToReplaceWith)) {
-            self::$blocksToReplaceWith = [
+        if (empty(self::$replacingBlocks)) {
+            self::$replacingBlocks = [
                 VanillaBlocks::COAL_ORE()->getFullId(),
                 VanillaBlocks::IRON_ORE()->getFullId(),
                 VanillaBlocks::LAPIS_LAZULI_ORE()->getFullId(),
@@ -147,7 +147,7 @@ class ChunkRequestTask extends AsyncTask {
                             }
                         }
 
-                        $randomBlockId = self::$blocksToReplaceWith[array_rand(self::$blocksToReplaceWith)];
+                        $randomBlockId = self::$replacingBlocks[array_rand(self::$replacingBlocks)];
                         $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
                     }
                 }
@@ -191,7 +191,7 @@ class ChunkRequestTask extends AsyncTask {
 
         $moved = $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
         if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
-            return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$blocksToReplace, true);
+            return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$replaceableBlocks, true);
         }
         return false;
     }

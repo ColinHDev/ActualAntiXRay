@@ -125,7 +125,12 @@ class ChunkRequestTask extends AsyncTask {
                             $y++;
                             continue;
                         }
-                        if (mt_rand(1, 100) > self::$blockChangeChance) continue;
+
+                        // We could use the random_int() function instead but since mt_rand() is faster than random_int(),
+                        // we use that as it is not important if our the returned values are cryptographically secure.
+                        if (mt_rand(1, 100) > self::$blockChangeChance) {
+                            continue;
+                        }
 
                         foreach (Facing::ALL as $facing) {
                             $blockSide = $vector->getSide($facing);

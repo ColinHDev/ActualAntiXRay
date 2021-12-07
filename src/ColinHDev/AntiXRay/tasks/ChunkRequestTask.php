@@ -31,7 +31,6 @@ class ChunkRequestTask extends AsyncTask {
     private static array $blocksToReplace = [];
     /** @var int[] */
     private static array $blocksToReplaceWith = [];
-    private static int $blocksToReplaceWithCount;
     private static int $blockChangeChance = 75;
 
     private int $worldMinY;
@@ -74,7 +73,6 @@ class ChunkRequestTask extends AsyncTask {
                 VanillaBlocks::DIAMOND_ORE()->getFullId(),
                 VanillaBlocks::EMERALD_ORE()->getFullId()
             ];
-            self::$blocksToReplaceWithCount = count(self::$blocksToReplaceWith);
         }
 
         $this->worldMinY = $world->getMinY();
@@ -143,7 +141,7 @@ class ChunkRequestTask extends AsyncTask {
                             }
                         }
 
-                        $randomBlockId = self::$blocksToReplaceWith[mt_rand(0, self::$blocksToReplaceWithCount - 1)];
+                        $randomBlockId = self::$blocksToReplaceWith[array_rand(self::$blocksToReplaceWith)];
                         $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
                     }
                 }

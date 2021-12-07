@@ -185,13 +185,11 @@ class ChunkRequestTask extends AsyncTask {
             $chunkY++;
         }
 
-        static $explorerMovedStatus = [SubChunkExplorerStatus::OK, SubChunkExplorerStatus::MOVED];
-        if ($explorer->getCurrentX() !== $chunkX || $explorer->getCurrentY() !== $chunkY || $explorer->getCurrentZ() !== $chunkZ) {
-            if (!in_array($explorer->moveToChunk($chunkX, $chunkY, $chunkZ), $explorerMovedStatus, true)) {
-                return false;
-            }
+        $moved = $explorer->moveToChunk($chunkX, $chunkY, $chunkZ);
+        if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
+            return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$blocksToReplace, true);
         }
-        return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$blocksToReplace, true);
+        return false;
     }
 
     public function onError() : void{

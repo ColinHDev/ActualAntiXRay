@@ -2,36 +2,13 @@
 
 namespace ColinHDev\AntiXRay\utils;
 
-use pocketmine\world\utils\SubChunkExplorer as PMMP_SubChunkExplorer;
+use pocketmine\world\format\Chunk;
+use pocketmine\world\utils\SubChunkExplorer as PMMPSubChunkExplorer;
 use pocketmine\world\utils\SubChunkExplorerStatus;
 
-class SubChunkExplorer extends PMMP_SubChunkExplorer {
+class SubChunkExplorer extends PMMPSubChunkExplorer {
 
     /**
-     * @return int | null
-     */
-    public function getCurrentX() : ?int {
-        return $this->currentX;
-    }
-
-    /**
-     * @return int | null
-     */
-    public function getCurrentY() : ?int {
-        return $this->currentY;
-    }
-
-    /**
-     * @return int | null
-     */
-    public function getCurrentZ() : ?int {
-        return $this->currentZ;
-    }
-
-    /**
-     * @param int $chunkX
-     * @param int $chunkY
-     * @param int $chunkZ
      * @return int
      * @phpstan-return SubChunkExplorerStatus::*
      */
@@ -50,7 +27,7 @@ class SubChunkExplorer extends PMMP_SubChunkExplorer {
         if ($this->currentSubChunk === null || $this->currentY !== $chunkY) {
             $this->currentY = $chunkY;
 
-            if ($this->currentY < 0 || $this->currentY >= $this->currentChunk->getHeight()) {
+            if ($this->currentY < Chunk::MIN_SUBCHUNK_INDEX || $this->currentY > Chunk::MAX_SUBCHUNK_INDEX) {
                 $this->currentSubChunk = null;
                 return SubChunkExplorerStatus::INVALID;
             }

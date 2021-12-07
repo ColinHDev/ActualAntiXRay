@@ -33,14 +33,6 @@ class ChunkRequestTask extends AsyncTask {
     private static array $blocksToReplaceWith = [];
     private static int $blocksToReplaceWithCount;
     private static int $blockChangeChance = 75;
-    private static array $blockSides = [
-        Facing::UP,
-        Facing::DOWN,
-        Facing::NORTH,
-        Facing::SOUTH,
-        Facing::WEST,
-        Facing::EAST
-    ];
 
     private int $worldMinY;
     private int $worldMaxY;
@@ -132,8 +124,8 @@ class ChunkRequestTask extends AsyncTask {
                         if (!$this->isBlockReplaceable($explorer, $vector, $s)) continue;
                         if (random_int(1, 100) > self::$blockChangeChance) continue;
 
-                        foreach (self::$blockSides as $side) {
-                            $blockSide = $vector->getSide($side);
+                        foreach (Facing::ALL as $facing) {
+                            $blockSide = $vector->getSide($facing);
                             if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) continue 2;
                         }
 

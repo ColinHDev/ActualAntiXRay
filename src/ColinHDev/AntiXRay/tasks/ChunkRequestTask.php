@@ -100,16 +100,16 @@ class ChunkRequestTask extends AsyncTask {
         }
 
         $explorer = new SubChunkExplorer($manager);
-        for ($s = 0; $s < $this->subChunkCount; $s++) {
+        for ($subChunkY = 0; $subChunkY < $this->subChunkCount; $subChunkY++) {
             for ($x = 0; $x < 16; $x++) {
                 for ($z = 0; $z < 16; $z++) {
                     for ($y = 0; $y < 16; $y++) {
 
-                        if ($s === 0 && $y === 0) continue;
-                        if ($s + 1 === $this->subChunkCount && $y === 15) continue;
+                        if ($subChunkY === Chunk::MIN_SUBCHUNK_INDEX && $y === 0) continue;
+                        if ($subChunkY + 1 === $this->subChunkCount && $y === 15) continue;
 
                         $vector = new Vector3($x, $y, $z);
-                        if (!$this->isBlockReplaceable($explorer, $vector, $s)) {
+                        if (!$this->isBlockReplaceable($explorer, $vector, $subChunkY)) {
                             // If the current block is not replaceable, we can increment the y coordinate by one,
                             // as we can skip the following loop which would check that block again as block below.
                             $y++;
@@ -124,7 +124,7 @@ class ChunkRequestTask extends AsyncTask {
 
                         foreach (Facing::ALL as $facing) {
                             $blockSide = $vector->getSide($facing);
-                            if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) {
+                            if (!$this->isBlockReplaceable($explorer, $blockSide, $subChunkY)) {
                                 if ($facing === Facing::UP) {
                                     // If the block above is not replaceable, we can increment the y coordinate by two,
                                     // as we can skip the following two loops which would check that block again.
@@ -148,7 +148,7 @@ class ChunkRequestTask extends AsyncTask {
         $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create($this->chunkX, $this->chunkZ, $this->subChunkCount, null, $payload))->getBuffer()));
     }
 
-    private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $chunkY) : bool {
+    private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $subChunkY) : bool {
         $chunkX = $this->chunkX;
         $x = $vector->getX();
         if ($x < 0) {
@@ -172,13 +172,13 @@ class ChunkRequestTask extends AsyncTask {
         $y = $vector->getY();
         if ($y < 0) {
             $y = 15;
-            $chunkY--;
+            $subChunkY--;
         } else if ($y > 15) {
             $y = 0;
-            $chunkY++;
+            $subChunkY++;
         }
 
-        $moved = $explorer->moveToChunk($chunkX, $chunkY, $chunkZ);
+        $moved = $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
         if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
             return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$blocksToReplace, true);
         }

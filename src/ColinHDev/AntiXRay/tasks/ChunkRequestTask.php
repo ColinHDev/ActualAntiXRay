@@ -122,14 +122,14 @@ class ChunkRequestTask extends AsyncTask {
 
                         $vector = new Vector3($x, $y, $z);
                         if (!$this->isBlockReplaceable($explorer, $vector, $s)) continue;
-                        if (random_int(1, 100) > self::$blockChangeChance) continue;
+                        if (mt_rand(1, 100) > self::$blockChangeChance) continue;
 
                         foreach (Facing::ALL as $facing) {
                             $blockSide = $vector->getSide($facing);
                             if (!$this->isBlockReplaceable($explorer, $blockSide, $s)) continue 2;
                         }
 
-                        $randomBlockId = self::$blocksToReplaceWith[random_int(0, self::$blocksToReplaceWithCount - 1)];
+                        $randomBlockId = self::$blocksToReplaceWith[mt_rand(0, self::$blocksToReplaceWithCount - 1)];
                         $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
                     }
                 }

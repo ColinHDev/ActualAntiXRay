@@ -1,6 +1,6 @@
 <?php
 
-namespace ColinHDev\CAntiCheat\utils;
+namespace ColinHDev\AntiXRay\utils;
 
 use pocketmine\world\utils\SubChunkExplorer as PMMP_SubChunkExplorer;
 use pocketmine\world\utils\SubChunkExplorerStatus;

@@ -1,8 +1,8 @@
 <?php
 
-namespace ColinHDev\CAntiCheat\tasks;
+namespace ColinHDev\AntiXRay\tasks;
 
-use ColinHDev\CAntiCheat\utils\SubChunkExplorer;
+use ColinHDev\AntiXRay\utils\SubChunkExplorer;
 use pocketmine\block\VanillaBlocks;
 use pocketmine\math\Facing;
 use pocketmine\math\Vector3;

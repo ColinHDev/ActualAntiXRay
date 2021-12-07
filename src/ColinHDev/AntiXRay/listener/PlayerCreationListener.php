@@ -1,8 +1,8 @@
 <?php
 
-namespace ColinHDev\CAntiCheat\listener;
+namespace ColinHDev\AntiXRay\listener;
 
-use ColinHDev\CAntiCheat\player\Player;
+use ColinHDev\AntiXRay\player\Player;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerCreationEvent;
 

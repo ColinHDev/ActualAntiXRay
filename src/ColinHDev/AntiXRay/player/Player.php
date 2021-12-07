@@ -1,9 +1,9 @@
 <?php
 
-namespace ColinHDev\CAntiCheat\player;
+namespace ColinHDev\AntiXRay\player;
 
-use ColinHDev\CAntiCheat\ResourceManager;
-use ColinHDev\CAntiCheat\tasks\ChunkRequestTask;
+use ColinHDev\AntiXRay\ResourceManager;
+use ColinHDev\AntiXRay\tasks\ChunkRequestTask;
 use pocketmine\network\mcpe\cache\ChunkCache;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\player\Player as PMMP_PLAYER;

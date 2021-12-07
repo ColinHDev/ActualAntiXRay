@@ -1,6 +1,6 @@
 <?php
 
-namespace ColinHDev\CAntiCheat;
+namespace ColinHDev\AntiXRay;
 
 use pocketmine\utils\Config;
 use pocketmine\utils\SingletonTrait;
@@ -15,11 +15,11 @@ class ResourceManager {
     public function __construct() {
         self::$instance = $this;
 
-        if (!is_dir(CAntiCheat::getInstance()->getDataFolder())) mkdir(CAntiCheat::getInstance()->getDataFolder());
+        if (!is_dir(AntiXRay::getInstance()->getDataFolder())) mkdir(AntiXRay::getInstance()->getDataFolder());
 
-        CAntiCheat::getInstance()->saveResource("config.yml");
+        AntiXRay::getInstance()->saveResource("config.yml");
 
-        $config = new Config(CAntiCheat::getInstance()->getDataFolder() . "config.yml", Config::YAML);
+        $config = new Config(AntiXRay::getInstance()->getDataFolder() . "config.yml", Config::YAML);
         $this->antiXRayStandard = $config->get("antixray.standard", true);
         $this->worlds = $config->get("antixray.worlds", []);
     }

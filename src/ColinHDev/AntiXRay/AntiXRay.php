@@ -1,19 +1,19 @@
 <?php
 
-namespace ColinHDev\CAntiCheat;
+namespace ColinHDev\AntiXRay;
 
-use ColinHDev\CAntiCheat\listener\DataPacketSendListener;
-use ColinHDev\CAntiCheat\listener\PlayerCreationListener;
+use ColinHDev\AntiXRay\listener\DataPacketSendListener;
+use ColinHDev\AntiXRay\listener\PlayerCreationListener;
 use pocketmine\plugin\PluginBase;
 
-class CAntiCheat extends PluginBase {
+class AntiXRay extends PluginBase {
 
-    private static CAntiCheat $instance;
+    private static AntiXRay $instance;
 
     /**
-     * @return CAntiCheat
+     * @return AntiXRay
      */
-    public static function getInstance() : CAntiCheat {
+    public static function getInstance() : AntiXRay {
         return self::$instance;
     }
 

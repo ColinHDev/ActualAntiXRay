@@ -1,8 +1,8 @@
 <?php
 
-namespace ColinHDev\CAntiCheat\listener;
+namespace ColinHDev\AntiXRay\listener;
 
-use ColinHDev\CAntiCheat\ResourceManager;
+use ColinHDev\AntiXRay\ResourceManager;
 use pocketmine\event\Listener;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;

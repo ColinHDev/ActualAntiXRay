@@ -19,8 +19,7 @@ class AntiXRay extends PluginBase {
 
     public function onLoad() : void {
         self::$instance = $this;
-
-        new ResourceManager();
+        ResourceManager::getInstance();
     }
 
     public function onEnable() : void {

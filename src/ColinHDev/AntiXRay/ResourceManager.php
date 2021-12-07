@@ -12,7 +12,6 @@ class ResourceManager {
     private array $worlds;
 
     public function __construct() {
-        self::$instance = $this;
         AntiXRay::getInstance()->saveResource("config.yml");
         $config = new Config(AntiXRay::getInstance()->getDataFolder() . "config.yml", Config::YAML);
         $this->antiXRayStandard = $config->get("antixray.standard", true);

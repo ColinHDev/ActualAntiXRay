@@ -1,5 +1,5 @@
 name: ActualAntiXRay
-main: ColinHDev\AntiXRay\AntiXRay
+main: ColinHDev\ActualAntiXRay\ActualAntiXRay
 version: "1.0.0"
 
 api: 4.0.0

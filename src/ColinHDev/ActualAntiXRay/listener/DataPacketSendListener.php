@@ -1,8 +1,8 @@
 <?php
 
-namespace ColinHDev\AntiXRay\listener;
+namespace ColinHDev\ActualAntiXRay\listener;
 
-use ColinHDev\AntiXRay\ResourceManager;
+use ColinHDev\ActualAntiXRay\ResourceManager;
 use pocketmine\event\Listener;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;

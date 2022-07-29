@@ -1,6 +1,6 @@
 <?php
 
-namespace ColinHDev\AntiXRay;
+namespace ColinHDev\ActualAntiXRay;
 
 use pocketmine\utils\Config;
 use pocketmine\utils\SingletonTrait;
@@ -15,8 +15,8 @@ class ResourceManager {
     private array $worlds = [];
 
     public function __construct() {
-        AntiXRay::getInstance()->saveResource("config.yml");
-        $config = new Config(AntiXRay::getInstance()->getDataFolder() . "config.yml", Config::YAML);
+        ActualAntiXRay::getInstance()->saveResource("config.yml");
+        $config = new Config(ActualAntiXRay::getInstance()->getDataFolder() . "config.yml", Config::YAML);
         $mode = $config->get("mode", "blacklist");
         if ($mode === "blacklist") {
             $this->default = true;

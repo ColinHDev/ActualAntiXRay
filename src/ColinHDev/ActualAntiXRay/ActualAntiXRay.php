@@ -1,13 +1,13 @@
 <?php
 
-namespace ColinHDev\AntiXRay;
+namespace ColinHDev\ActualAntiXRay;
 
-use ColinHDev\AntiXRay\listener\DataPacketSendListener;
-use ColinHDev\AntiXRay\listener\PlayerCreationListener;
+use ColinHDev\ActualAntiXRay\listener\DataPacketSendListener;
+use ColinHDev\ActualAntiXRay\listener\PlayerCreationListener;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\SingletonTrait;
 
-class AntiXRay extends PluginBase {
+class ActualAntiXRay extends PluginBase {
     use SingletonTrait;
 
     public function onEnable() : void {

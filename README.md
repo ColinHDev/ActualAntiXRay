@@ -1,4 +1,4 @@
-# AntiXRay
+# ActualAntiXRay
 
 This is an actual AntiXRay plugin for PocketMine-MP.
 

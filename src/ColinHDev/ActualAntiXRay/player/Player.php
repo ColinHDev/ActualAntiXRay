@@ -1,9 +1,9 @@
 <?php
 
-namespace ColinHDev\AntiXRay\player;
+namespace ColinHDev\ActualAntiXRay\player;
 
-use ColinHDev\AntiXRay\ResourceManager;
-use ColinHDev\AntiXRay\tasks\ChunkRequestTask;
+use ColinHDev\ActualAntiXRay\ResourceManager;
+use ColinHDev\ActualAntiXRay\tasks\ChunkRequestTask;
 use pocketmine\network\mcpe\cache\ChunkCache;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;

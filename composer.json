@@ -1,5 +1,5 @@
 {
-	"name": "colinhdev/antixray",
+	"name": "colinhdev/actualantixray",
 	"require": {
 		"pocketmine/pocketmine-mp": "dev-stable"
 	},

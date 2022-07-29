@@ -1,6 +1,6 @@
 <?php
 
-namespace ColinHDev\AntiXRay\utils;
+namespace ColinHDev\ActualAntiXRay\utils;
 
 use pocketmine\world\format\Chunk;
 use pocketmine\world\utils\SubChunkExplorer as PMMPSubChunkExplorer;

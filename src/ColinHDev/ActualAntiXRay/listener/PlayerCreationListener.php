@@ -1,8 +1,8 @@
 <?php
 
-namespace ColinHDev\AntiXRay\listener;
+namespace ColinHDev\ActualAntiXRay\listener;
 
-use ColinHDev\AntiXRay\player\Player;
+use ColinHDev\ActualAntiXRay\player\Player;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerCreationEvent;
 

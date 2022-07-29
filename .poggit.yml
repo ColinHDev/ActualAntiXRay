@@ -3,7 +3,7 @@ build-by-default: true
 branches:
 - main
 projects:
-  AntiXRay:
+  ActualAntiXRay:
     path: ""
     lint:
       phpstan: false

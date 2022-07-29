@@ -1,9 +1,6 @@
-# decide if the AntiXRay should be standard activated or deactivated
-# true = activated
-# false = deactivated
-antixray.standard: false
-
-# decide worlds in which the opposite of "antixray.standard" is working
-# if "antixray.standard" = true: AntiXRay will be disabled in these worlds
-# if "antixray.standard" = false: AntiXRay will be enabled in these worlds
-antixray.worlds: []
+# List behaviour:
+# - blacklist: AntiXRay will only be applied to worlds that ARE NOT in the list.
+# - whitelist: AntiXRay will only be applied to worlds that ARE in the list.
+mode: "blacklist"
+# List names of worlds here.
+worlds: []

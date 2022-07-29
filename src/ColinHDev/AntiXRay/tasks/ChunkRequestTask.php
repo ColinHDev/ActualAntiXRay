@@ -18,10 +18,13 @@ use pocketmine\network\mcpe\serializer\ChunkSerializer;
 use pocketmine\utils\AssumptionFailedError;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
+use pocketmine\world\format\SubChunk;
 use pocketmine\world\SimpleChunkManager;
 use pocketmine\world\utils\SubChunkExplorerStatus;
 use pocketmine\world\World;
 use function assert;
+use function is_array;
+use function is_int;
 
 class ChunkRequestTask extends PMMPChunkRequestTask {
 
@@ -29,7 +32,6 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
     private static array $replaceableBlocks = [];
     /** @var int[] */
     private static array $replacingBlocks = [];
-    private static int $blockChangeChance = 75;
 
     private int $worldMinY;
     private int $worldMaxY;
@@ -74,15 +76,20 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
     }
 
     public function onRun() : void {
+        $adjacentChunks = igbinary_unserialize($this->adjacentChunks);
+        assert(is_array($adjacentChunks));
         $chunks = array_map(
-            fn (?string $serialized) => $serialized !== null ? FastChunkSerializer::deserializeTerrain($serialized) : null,
+            static fn (?string $serialized) => $serialized !== null ? FastChunkSerializer::deserializeTerrain($serialized) : null,
             array_merge(
                 [World::chunkHash(0, 0) => $this->chunk],
-                igbinary_unserialize($this->adjacentChunks)
+                $adjacentChunks
             )
         );
         $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
-        foreach ($chunks as $relativeChunkHash => $chunk) {
+        foreach($chunks as $relativeChunkHash => $chunk) {
+            if (!($chunk instanceof Chunk)) {
+                continue;
+            }
             World::getXZ($relativeChunkHash, $relativeChunkX, $relativeChunkZ);
             $manager->setChunk($this->chunkX + $relativeChunkX, $this->chunkZ + $relativeChunkZ, $chunk);
         }
@@ -92,11 +99,9 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
             // By using ChunkSerializer::getSubChunkCount() for determining the number of subchunks, we already strip
             // away all upper subchunks which are empty. But it could also be the case, that a lower subchunk is empty,
             // that's why we check here again.
-            $moved = $explorer->moveToChunk($this->chunkX, $subChunkY, $this->chunkZ);
-            if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
-                if ($explorer->currentSubChunk->isEmptyFast()) {
-                    continue;
-                }
+            $explorer->moveToChunk($this->chunkX, $subChunkY, $this->chunkZ);
+            if ($explorer->currentSubChunk instanceof SubChunk && $explorer->currentSubChunk->isEmptyFast()) {
+                continue;
             }
 
             for ($x = 0; $x < 16; $x++) {
@@ -116,7 +121,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
                         // We could use the random_int() function instead but since mt_rand() is faster than random_int(),
                         // we use that as it is not important if our the returned values are cryptographically secure.
-                        if (mt_rand(1, 100) > self::$blockChangeChance) {
+                        if (mt_rand(1, 100) > 75) {
                             continue;
                         }
 
@@ -135,6 +140,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
                         }
 
                         $randomBlockId = self::$replacingBlocks[array_rand(self::$replacingBlocks)];
+                        assert($explorer->currentSubChunk instanceof SubChunk);
                         $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
                     }
                 }
@@ -152,6 +158,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
     private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $subChunkY) : bool {
         $chunkX = $this->chunkX;
         $x = $vector->getX();
+        assert(is_int($x));
         if ($x < 0) {
             $x = 15;
             $chunkX--;
@@ -162,6 +169,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
         $chunkZ = $this->chunkZ;
         $z = $vector->getZ();
+        assert(is_int($z));
         if ($z < 0) {
             $z = 15;
             $chunkZ--;
@@ -171,6 +179,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         }
 
         $y = $vector->getY();
+        assert(is_int($y));
         if ($y < 0) {
             $y = 15;
             $subChunkY--;
@@ -179,8 +188,8 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
             $subChunkY++;
         }
 
-        $moved = $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
-        if ($moved === SubChunkExplorerStatus::OK || $moved === SubChunkExplorerStatus::MOVED) {
+        $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
+        if ($explorer->currentSubChunk instanceof SubChunk) {
             return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$replaceableBlocks, true);
         }
         return false;

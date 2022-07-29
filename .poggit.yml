@@ -1,0 +1,10 @@
+--- # Poggit-CI Manifest. Open the CI at https://poggit.pmmp.io/ci/ColinHDev/AntiXRay
+build-by-default: true
+branches:
+- main
+projects:
+  AntiXRay:
+    path: ""
+    lint:
+      phpstan: false
+...

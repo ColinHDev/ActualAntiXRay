@@ -23,7 +23,7 @@ class ResourceManager {
         } else {
             $this->default = false;
         }
-        $worlds = $config->get("antixray.worlds", []);
+        $worlds = $config->get("worlds", []);
         if (is_array($worlds)) {
             foreach($worlds as $worldName) {
                 if (is_string($worldName)) {

@@ -35,7 +35,7 @@ class ResourceManager {
 
     public function isEnabledForWorld(string $worldName) : bool {
         return
-            ($this->default && isset($this->worlds[$worldName])) ||
-            (!$this->default && !isset($this->worlds[$worldName]));
+            ($this->default && !isset($this->worlds[$worldName])) ||
+            (!$this->default && isset($this->worlds[$worldName]));
     }
 }

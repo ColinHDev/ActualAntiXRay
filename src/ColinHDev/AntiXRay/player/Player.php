@@ -16,6 +16,12 @@ use ReflectionProperty;
 class Player extends PMMP_PLAYER {
 
     /**
+     * @var true[]
+     * @phpstan-var array<int, true>
+     */
+    private array $activeChunkGenerationRequests = [];
+
+    /**
      * Requests chunks from the world to be sent, up to a set limit every tick. This operates on the results of the most recent chunk
      * order.
      */
@@ -39,10 +45,8 @@ class Player extends PMMP_PLAYER {
 
         $count = 0;
         $world = $this->getWorld();
-        $property = new ReflectionProperty(PMMP_PLAYER::class, "activeChunkGenerationRequests");
-        $property->setAccessible(true);
-        $activeChunkGenerationRequests = $property->getValue($this);
-        $limit = $this->chunksPerTick - count($activeChunkGenerationRequests);
+
+        $limit = $this->chunksPerTick - count($this->activeChunkGenerationRequests);
         foreach($this->loadQueue as $index => $distance){
             if($count >= $limit){
                 break;
@@ -56,8 +60,7 @@ class Player extends PMMP_PLAYER {
             ++$count;
 
             $this->usedChunks[$index] = UsedChunkStatus::REQUESTED_GENERATION();
-            $activeChunkGenerationRequests[$index] = true;
-            $property->setValue($this, $activeChunkGenerationRequests);
+            $this->activeChunkGenerationRequests[$index] = true;
             unset($this->loadQueue[$index]);
             $this->getWorld()->registerChunkLoader($this->chunkLoader, $X, $Z, true);
             $this->getWorld()->registerChunkListener($this, $X, $Z);
@@ -73,11 +76,7 @@ class Player extends PMMP_PLAYER {
                         //multiple callbacks for this player. In that case, only the first one matters.
                         return;
                     }
-                    $property = new ReflectionProperty(PMMP_PLAYER::class, "activeChunkGenerationRequests");
-                    $property->setAccessible(true);
-                    $activeChunkGenerationRequests = $property->getValue($this);
-                    unset($activeChunkGenerationRequests[$index]);
-                    $property->setValue($this, $activeChunkGenerationRequests);
+                    unset($this->activeChunkGenerationRequests[$index]);
                     $this->usedChunks[$index] = UsedChunkStatus::REQUESTED_SENDING();
 
                     $this->startUsingChunk($X, $Z, function() use ($X, $Z, $index) : void{
@@ -153,7 +152,7 @@ class Player extends PMMP_PLAYER {
 
         $world->registerChunkListener($chunkCache, $chunkX, $chunkZ);
         $chunk = $world->getChunk($chunkX, $chunkZ);
-        if ($chunk === null) {
+        if($chunk === null){
             throw new \InvalidArgumentException("Cannot request an unloaded chunk");
         }
         $chunkHash = World::chunkHash($chunkX, $chunkZ);

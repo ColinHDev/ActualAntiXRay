@@ -21,6 +21,7 @@ use pocketmine\world\format\io\FastChunkSerializer;
 use pocketmine\world\SimpleChunkManager;
 use pocketmine\world\utils\SubChunkExplorerStatus;
 use pocketmine\world\World;
+use function assert;
 
 class ChunkRequestTask extends PMMPChunkRequestTask {
 
@@ -62,37 +63,32 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         $this->worldMinY = $world->getMinY();
         $this->worldMaxY = $world->getMaxY();
 
-        $this->chunkX = $chunkX;
-        $this->chunkZ = $chunkZ;
         $this->subChunkCount = ChunkSerializer::getSubChunkCount($chunk);
+        $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
         $this->adjacentChunks = igbinary_serialize(
             array_map(
                 fn (?Chunk $c) => $c !== null ? FastChunkSerializer::serializeTerrain($c) : null,
                 $world->getAdjacentChunks($chunkX, $chunkZ)
             )) ?? throw new AssumptionFailedError("igbinary_serialize() returned null");
-        $this->tiles = ChunkSerializer::serializeTiles($chunk);
-
-        $this->compressor = $compressor;
     }
 
     public function onRun() : void {
         $chunks = array_map(
             fn (?string $serialized) => $serialized !== null ? FastChunkSerializer::deserializeTerrain($serialized) : null,
             array_merge(
-                [World::chunkHash($this->chunkX, $this->chunkZ) => $this->chunk],
+                [World::chunkHash(0, 0) => $this->chunk],
                 igbinary_unserialize($this->adjacentChunks)
             )
         );
         $manager = new SimpleChunkManager($this->worldMinY, $this->worldMaxY);
-        foreach ($chunks as $chunkHash => $chunk) {
-            World::getXZ($chunkHash, $chunkX, $chunkZ);
-            $manager->setChunk($chunkX, $chunkZ, $chunk);
+        foreach ($chunks as $relativeChunkHash => $chunk) {
+            World::getXZ($relativeChunkHash, $relativeChunkX, $relativeChunkZ);
+            $manager->setChunk($this->chunkX + $relativeChunkX, $this->chunkZ + $relativeChunkZ, $chunk);
         }
 
         $explorer = new SubChunkExplorer($manager);
         for ($subChunkY = 0; $subChunkY < $this->subChunkCount; $subChunkY++) {
-
             // By using ChunkSerializer::getSubChunkCount() for determining the number of subchunks, we already strip
             // away all upper subchunks which are empty. But it could also be the case, that a lower subchunk is empty,
             // that's why we check here again.
@@ -145,9 +141,12 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
             }
         }
 
+        $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
+        assert($chunk instanceof Chunk);
+        $subCount = ChunkSerializer::getSubChunkCount($chunk) + ChunkSerializer::LOWER_PADDING_SIZE;
         $encoderContext = new PacketSerializerContext(GlobalItemTypeDictionary::getInstance()->getDictionary());
-        $payload = ChunkSerializer::serializeFullChunk($manager->getChunk($this->chunkX, $this->chunkZ), RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
-        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create($this->chunkX, $this->chunkZ, $this->subChunkCount, null, $payload))->getBuffer()));
+        $payload = ChunkSerializer::serializeFullChunk($chunk, RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
+        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create($this->chunkX, $this->chunkZ, $subCount, false, null, $payload))->getBuffer()));
     }
 
     private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $subChunkY) : bool {

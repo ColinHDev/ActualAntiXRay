@@ -4,15 +4,20 @@ namespace ColinHDev\ActualAntiXRay\player;
 
 use ColinHDev\ActualAntiXRay\ResourceManager;
 use ColinHDev\ActualAntiXRay\tasks\ChunkRequestTask;
+use pocketmine\block\tile\Spawnable;
+use pocketmine\event\player\PlayerPostChunkSendEvent;
 use pocketmine\network\mcpe\cache\ChunkCache;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;
+use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
+use pocketmine\network\mcpe\protocol\types\BlockPosition;
 use pocketmine\player\Player as PMMP_PLAYER;
 use pocketmine\player\UsedChunkStatus;
 use pocketmine\timings\Timings;
 use pocketmine\utils\Utils;
 use pocketmine\world\World;
 use ReflectionProperty;
+use function var_dump;
 
 class Player extends PMMP_PLAYER {
 
@@ -50,7 +55,7 @@ class Player extends PMMP_PLAYER {
             $X = null;
             $Z = null;
             World::getXZ($index, $X, $Z);
-            assert(is_int($X) and is_int($Z));
+            assert(is_int($X) && is_int($Z));
 
             ++$count;
 
@@ -85,6 +90,7 @@ class Player extends PMMP_PLAYER {
 
                             $this->getNetworkSession()->notifyTerrainReady();
                         }
+                        (new PlayerPostChunkSendEvent($this, $X, $Z))->call();
                     });
                 },
                 static function() : void{
@@ -113,7 +119,7 @@ class Player extends PMMP_PLAYER {
                     return;
                 }
                 $currentWorld = $this->getLocation()->getWorld();
-                if($world !== $currentWorld or ($status = $this->getUsedChunkStatus($chunkX, $chunkZ)) === null){
+                if($world !== $currentWorld || ($status = $this->getUsedChunkStatus($chunkX, $chunkZ)) === null){
                     $this->logger->debug("Tried to send no-longer-active chunk $chunkX $chunkZ in world " . $world->getFolderName());
                     return;
                 }
@@ -128,6 +134,22 @@ class Player extends PMMP_PLAYER {
                 try{
                     $this->getNetworkSession()->queueCompressed($promise);
                     $onCompletion();
+
+                    //TODO: HACK! we send the full tile data here, due to a bug in 1.19.10 which causes items in tiles
+                    //(item frames, lecterns) to not load properly when they are sent in a chunk via the classic chunk
+                    //sending mechanism. We workaround this bug by sending only bare essential data in LevelChunkPacket
+                    //(enough to create the tiles, since BlockActorDataPacket can't create tiles by itself) and then
+                    //send the actual tile properties here.
+                    //TODO: maybe we can stuff these packets inside the cached batch alongside LevelChunkPacket?
+                    $chunk = $currentWorld->getChunk($chunkX, $chunkZ);
+                    if($chunk !== null){
+                        foreach($chunk->getTiles() as $tile){
+                            if(!($tile instanceof Spawnable)){
+                                continue;
+                            }
+                            $this->getNetworkSession()->sendDataPacket(BlockActorDataPacket::create(BlockPosition::fromVector3($tile->getPosition()), $tile->getSerializedSpawnCompound()));
+                        }
+                    }
                 }finally{
                     $world->timings->syncChunkSend->stopTiming();
                 }
@@ -193,10 +215,16 @@ class Player extends PMMP_PLAYER {
                     $chunk,
                     $caches[$chunkHash],
                     $compressor,
-                    function() use ($world, $chunkCache, $chunkX, $chunkZ) : void{
+                    function() use ($world, $chunkCache, $chunkHash, $chunkX, $chunkZ) : void{
                         $world->getLogger()->error("Failed preparing chunk $chunkX $chunkZ, retrying");
 
-                        $this->restartPendingRequest($chunkCache, $chunkX, $chunkZ);
+                        $property = new ReflectionProperty(ChunkCache::class, "caches");
+                        $property->setAccessible(true);
+                        /** @var CompressBatchPromise[] $caches */
+                        $caches = $property->getValue($chunkCache);
+                        if(isset($caches[$chunkHash])){
+                            $this->restartPendingRequest($chunkCache, $chunkX, $chunkZ);
+                        }
                     }
                 )
             );
@@ -221,7 +249,7 @@ class Player extends PMMP_PLAYER {
         $caches = $property->getValue($chunkCache);
 
         $existing = $caches[$chunkHash] ?? null;
-        if($existing === null or $existing->hasResult()){
+        if($existing === null || $existing->hasResult()){
             throw new \InvalidArgumentException("Restart can only be applied to unresolved promises");
         }
         $existing->cancel();

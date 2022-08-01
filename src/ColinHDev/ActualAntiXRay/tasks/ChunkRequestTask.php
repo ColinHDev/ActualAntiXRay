@@ -16,6 +16,7 @@ use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializerContext;
 use pocketmine\network\mcpe\serializer\ChunkSerializer;
 use pocketmine\utils\AssumptionFailedError;
+use pocketmine\world\ChunkLoader;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
 use pocketmine\world\format\SubChunk;
@@ -68,10 +69,26 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         $this->subChunkCount = ChunkSerializer::getSubChunkCount($chunk);
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
+        $adjacentChunks = [];
+        for ($x = -1; $x <= 1; $x++) {
+            for ($z = -1; $z <= 1; $z++) {
+                if ($x === 0 || $z === 0) {
+                    if ($x === 0 && $z === 0) {
+                        continue;
+                    }
+                    $cx = $chunkX + $x;
+                    $cz = $chunkZ + $z;
+                    $temporaryChunkLoader = new class implements ChunkLoader{};
+                    $world->registerChunkLoader($temporaryChunkLoader, $cx, $cz);
+                    $adjacentChunks[World::chunkHash($x, $z)] = $world->loadChunk($cx, $cz);
+                    $world->unregisterChunkLoader($temporaryChunkLoader, $cx, $cz);
+                }
+            }
+        }
         $this->adjacentChunks = igbinary_serialize(
             array_map(
-                fn (?Chunk $c) => $c !== null ? FastChunkSerializer::serializeTerrain($c) : null,
-                $world->getAdjacentChunks($chunkX, $chunkZ)
+                static fn(?Chunk $c) => $c !== null ? FastChunkSerializer::serializeTerrain($c) : null,
+                $adjacentChunks
             )) ?? throw new AssumptionFailedError("igbinary_serialize() returned null");
     }
 

@@ -222,7 +222,7 @@ class Player extends PMMP_PLAYER {
                         $property->setAccessible(true);
                         /** @var CompressBatchPromise[] $caches */
                         $caches = $property->getValue($chunkCache);
-                        if (isset($caches[$chunkHash])){
+                        if(isset($caches[$chunkHash])){
                             $this->restartPendingRequest($chunkCache, $chunkX, $chunkZ);
                         }
                     }

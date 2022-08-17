@@ -215,14 +215,14 @@ class Player extends PMMP_PLAYER {
                     $chunk,
                     $caches[$chunkHash],
                     $compressor,
-                    function() use ($world, $chunkCache, $chunkHash, $chunkX, $chunkZ) : void{
+                    function() use ($world, $chunkCache, $chunkHash, $chunkX, $chunkZ) : void {
                         $world->getLogger()->error("Failed preparing chunk $chunkX $chunkZ, retrying");
 
                         $property = new ReflectionProperty(ChunkCache::class, "caches");
                         $property->setAccessible(true);
                         /** @var CompressBatchPromise[] $caches */
                         $caches = $property->getValue($chunkCache);
-                        if(isset($caches[$chunkHash])){
+                        if (isset($caches[$chunkHash])){
                             $this->restartPendingRequest($chunkCache, $chunkX, $chunkZ);
                         }
                     }

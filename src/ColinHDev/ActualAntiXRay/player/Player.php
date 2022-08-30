@@ -134,22 +134,6 @@ class Player extends PMMP_PLAYER {
                 try{
                     $this->getNetworkSession()->queueCompressed($promise);
                     $onCompletion();
-
-                    //TODO: HACK! we send the full tile data here, due to a bug in 1.19.10 which causes items in tiles
-                    //(item frames, lecterns) to not load properly when they are sent in a chunk via the classic chunk
-                    //sending mechanism. We workaround this bug by sending only bare essential data in LevelChunkPacket
-                    //(enough to create the tiles, since BlockActorDataPacket can't create tiles by itself) and then
-                    //send the actual tile properties here.
-                    //TODO: maybe we can stuff these packets inside the cached batch alongside LevelChunkPacket?
-                    $chunk = $currentWorld->getChunk($chunkX, $chunkZ);
-                    if($chunk !== null){
-                        foreach($chunk->getTiles() as $tile){
-                            if(!($tile instanceof Spawnable)){
-                                continue;
-                            }
-                            $this->getNetworkSession()->sendDataPacket(BlockActorDataPacket::create(BlockPosition::fromVector3($tile->getPosition()), $tile->getSerializedSpawnCompound()));
-                        }
-                    }
                 }finally{
                     $world->timings->syncChunkSend->stopTiming();
                 }

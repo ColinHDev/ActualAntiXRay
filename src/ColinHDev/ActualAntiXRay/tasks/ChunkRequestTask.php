@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ColinHDev\ActualAntiXRay\tasks;
 
 use ColinHDev\ActualAntiXRay\utils\SubChunkExplorer;
@@ -17,12 +19,12 @@ use pocketmine\network\mcpe\protocol\serializer\PacketSerializerContext;
 use pocketmine\network\mcpe\protocol\types\ChunkPosition;
 use pocketmine\network\mcpe\serializer\ChunkSerializer;
 use pocketmine\utils\AssumptionFailedError;
+use pocketmine\utils\BinaryStream;
 use pocketmine\world\ChunkLoader;
 use pocketmine\world\format\Chunk;
 use pocketmine\world\format\io\FastChunkSerializer;
 use pocketmine\world\format\SubChunk;
 use pocketmine\world\SimpleChunkManager;
-use pocketmine\world\utils\SubChunkExplorerStatus;
 use pocketmine\world\World;
 use function assert;
 use function is_array;
@@ -38,8 +40,6 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
     private int $worldMinY;
     private int $worldMaxY;
 
-    private int $subChunkCount;
-
     private string $adjacentChunks;
     private string $tiles;
 
@@ -47,27 +47,26 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         parent::__construct($chunkX, $chunkZ, $chunk, $promise, $compressor, $onError);
         if (empty(self::$replaceableBlocks)) {
             self::$replaceableBlocks = [
-                VanillaBlocks::STONE()->getFullId(),
-                VanillaBlocks::DIRT()->getFullId(),
-                VanillaBlocks::GRAVEL()->getFullId()
+                VanillaBlocks::STONE()->getStateId(),
+                VanillaBlocks::DIRT()->getStateId(),
+                VanillaBlocks::GRAVEL()->getStateId()
             ];
         }
         if (empty(self::$replacingBlocks)) {
             self::$replacingBlocks = [
-                VanillaBlocks::COAL_ORE()->getFullId(),
-                VanillaBlocks::IRON_ORE()->getFullId(),
-                VanillaBlocks::LAPIS_LAZULI_ORE()->getFullId(),
-                VanillaBlocks::REDSTONE_ORE()->getFullId(),
-                VanillaBlocks::GOLD_ORE()->getFullId(),
-                VanillaBlocks::DIAMOND_ORE()->getFullId(),
-                VanillaBlocks::EMERALD_ORE()->getFullId()
+                VanillaBlocks::COAL_ORE()->getStateId(),
+                VanillaBlocks::IRON_ORE()->getStateId(),
+                VanillaBlocks::LAPIS_LAZULI_ORE()->getStateId(),
+                VanillaBlocks::REDSTONE_ORE()->getStateId(),
+                VanillaBlocks::GOLD_ORE()->getStateId(),
+                VanillaBlocks::DIAMOND_ORE()->getStateId(),
+                VanillaBlocks::EMERALD_ORE()->getStateId()
             ];
         }
 
         $this->worldMinY = $world->getMinY();
         $this->worldMaxY = $world->getMaxY();
 
-        $this->subChunkCount = ChunkSerializer::getSubChunkCount($chunk);
         $this->tiles = ChunkSerializer::serializeTiles($chunk);
 
         $adjacentChunks = [];
@@ -113,10 +112,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         }
 
         $explorer = new SubChunkExplorer($manager);
-        for ($subChunkY = 0; $subChunkY < $this->subChunkCount; $subChunkY++) {
-            // By using ChunkSerializer::getSubChunkCount() for determining the number of subchunks, we already strip
-            // away all upper subchunks which are empty. But it could also be the case, that a lower subchunk is empty,
-            // that's why we check here again.
+        for ($subChunkY = Chunk::MIN_SUBCHUNK_INDEX; $subChunkY < Chunk::MAX_SUBCHUNK_INDEX; $subChunkY++) {
             $explorer->moveToChunk($this->chunkX, $subChunkY, $this->chunkZ);
             if ($explorer->currentSubChunk instanceof SubChunk && $explorer->currentSubChunk->isEmptyFast()) {
                 continue;
@@ -127,7 +123,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
                     for ($y = 0; $y < 16; $y++) {
 
                         if ($subChunkY === Chunk::MIN_SUBCHUNK_INDEX && $y === 0) continue;
-                        if ($subChunkY + 1 === $this->subChunkCount && $y === 15) continue;
+                        if ($subChunkY + 1 === Chunk::MAX_SUBCHUNK_INDEX && $y === 15) continue;
 
                         $vector = new Vector3($x, $y, $z);
                         if (!$this->isBlockReplaceable($explorer, $vector, $subChunkY)) {
@@ -159,7 +155,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
                         $randomBlockId = self::$replacingBlocks[array_rand(self::$replacingBlocks)];
                         assert($explorer->currentSubChunk instanceof SubChunk);
-                        $explorer->currentSubChunk->setFullBlock($x, $y, $z, $randomBlockId);
+                        $explorer->currentSubChunk->setBlockStateId($x, $y, $z, $randomBlockId);
                     }
                 }
             }
@@ -167,10 +163,13 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
         $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
         assert($chunk instanceof Chunk);
-        $subCount = ChunkSerializer::getSubChunkCount($chunk) + ChunkSerializer::LOWER_PADDING_SIZE;
+        $subCount = ChunkSerializer::getSubChunkCount($chunk);
         $encoderContext = new PacketSerializerContext(GlobalItemTypeDictionary::getInstance()->getDictionary());
         $payload = ChunkSerializer::serializeFullChunk($chunk, RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
-        $this->setResult($this->compressor->compress(PacketBatch::fromPackets($encoderContext, LevelChunkPacket::create(new ChunkPosition($this->chunkX, $this->chunkZ), $subCount, false, null, $payload))->getBuffer()));
+
+        $stream = new BinaryStream();
+        PacketBatch::encodePackets($stream, $encoderContext, [LevelChunkPacket::create(new ChunkPosition($this->chunkX, $this->chunkZ), $subCount, false, null, $payload)]);
+        $this->setResult($this->compressor->deserialize()->compress($stream->getBuffer()));
     }
 
     private function isBlockReplaceable(SubChunkExplorer $explorer, Vector3 $vector, int $subChunkY) : bool {
@@ -208,7 +207,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
         $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
         if ($explorer->currentSubChunk instanceof SubChunk) {
-            return in_array($explorer->currentSubChunk->getFullBlock($x, $y, $z), self::$replaceableBlocks, true);
+            return in_array($explorer->currentSubChunk->getBlockStateId($x, $y, $z), self::$replaceableBlocks, true);
         }
         return false;
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ColinHDev\ActualAntiXRay\listener;
 
 use ColinHDev\ActualAntiXRay\ResourceManager;
@@ -8,6 +10,7 @@ use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\convert\RuntimeBlockMapping;
 use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
 use pocketmine\world\World;
 use function array_filter;
@@ -49,7 +52,7 @@ class DataPacketSendListener implements Listener {
                 // If the sent block does not match the existing block at that position, then someone uses this packet
                 // to send fake blocks to the client, for example through the InvMenu virion.
                 // Since we don't want to undermine his efforts, we will ignore this and don't send any block updates.
-                if ($blockMapping->toRuntimeId($world->getBlockAt($x, $y, $z)->getFullId()) !== $packet->blockRuntimeId) {
+                if ($blockMapping->toRuntimeId($world->getBlockAt($x, $y, $z)->getStateId()) !== $packet->blockRuntimeId) {
                     continue;
                 }
                 $worldName = $world->getFolderName();
@@ -71,6 +74,7 @@ class DataPacketSendListener implements Listener {
             return;
         }
         foreach($positionsToUpdatePerWorld as $worldName => $positionsToUpdate) {
+            /** @var NetworkSession[] $worldTargets */
             $worldTargets = array_filter(
                 $applyableTargets,
                 static function(NetworkSession $target) use($worldName) : bool {
@@ -86,7 +90,7 @@ class DataPacketSendListener implements Listener {
             $world = $applyableWorlds[$worldName];
             foreach ($world->createBlockUpdatePackets($positionsToUpdate) as $packet) {
                 foreach($worldTargets as $target) {
-                    $target->addToSendBuffer($packet);
+                    $target->addToSendBuffer(NetworkSession::encodePacketTimed(PacketSerializer::encoder($target->getPacketSerializerContext()), $packet));
                 }
             }
         }

@@ -2,6 +2,7 @@
 build-by-default: true
 branches:
 - main
+- pm5
 projects:
   ActualAntiXRay:
     path: ""

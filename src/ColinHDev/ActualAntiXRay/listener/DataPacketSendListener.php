@@ -8,6 +8,7 @@ use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\convert\RuntimeBlockMapping;
 use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
 use pocketmine\world\World;
 use function array_filter;
@@ -71,6 +72,7 @@ class DataPacketSendListener implements Listener {
             return;
         }
         foreach($positionsToUpdatePerWorld as $worldName => $positionsToUpdate) {
+            /** @var NetworkSession[] $worldTargets */
             $worldTargets = array_filter(
                 $applyableTargets,
                 static function(NetworkSession $target) use($worldName) : bool {
@@ -86,7 +88,7 @@ class DataPacketSendListener implements Listener {
             $world = $applyableWorlds[$worldName];
             foreach ($world->createBlockUpdatePackets($positionsToUpdate) as $packet) {
                 foreach($worldTargets as $target) {
-                    $target->addToSendBuffer($packet);
+                    $target->addToSendBuffer(NetworkSession::encodePacketTimed(PacketSerializer::encoder($target->getPacketSerializerContext()), $packet));
                 }
             }
         }

@@ -1,7 +1,7 @@
 {
 	"name": "colinhdev/actualantixray",
 	"require": {
-		"pocketmine/pocketmine-mp": "4.7.1",
+		"pocketmine/pocketmine-mp": "4.16.0",
 		"ext-igbinary": "*"
 	},
 	"require-dev": {

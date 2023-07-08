@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ColinHDev\ActualAntiXRay\tasks;
 
 use ColinHDev\ActualAntiXRay\utils\SubChunkExplorer;
+use pmmp\thread\ThreadSafeArray;
 use pocketmine\block\VanillaBlocks;
 use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
@@ -28,13 +29,12 @@ use pocketmine\world\World;
 use function assert;
 use function is_array;
 use function is_int;
+use function mt_rand;
 
 class ChunkRequestTask extends PMMPChunkRequestTask {
 
-    /** @var int[] */
-    private static array $replaceableBlocks = [];
-    /** @var int[] */
-    private static array $replacingBlocks = [];
+    private ThreadSafeArray $replaceableBlocks;
+    private ThreadSafeArray $replacingBlocks;
 
     private int $worldMinY;
     private int $worldMaxY;
@@ -44,24 +44,20 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
     public function __construct(World $world, int $chunkX, int $chunkZ, Chunk $chunk, CompressBatchPromise $promise, Compressor $compressor, ?\Closure $onError = null) {
         parent::__construct($chunkX, $chunkZ, $chunk, $promise, $compressor, $onError);
-        if (empty(self::$replaceableBlocks)) {
-            self::$replaceableBlocks = [
-                VanillaBlocks::STONE()->getStateId(),
-                VanillaBlocks::DIRT()->getStateId(),
-                VanillaBlocks::GRAVEL()->getStateId()
-            ];
-        }
-        if (empty(self::$replacingBlocks)) {
-            self::$replacingBlocks = [
-                VanillaBlocks::COAL_ORE()->getStateId(),
-                VanillaBlocks::IRON_ORE()->getStateId(),
-                VanillaBlocks::LAPIS_LAZULI_ORE()->getStateId(),
-                VanillaBlocks::REDSTONE_ORE()->getStateId(),
-                VanillaBlocks::GOLD_ORE()->getStateId(),
-                VanillaBlocks::DIAMOND_ORE()->getStateId(),
-                VanillaBlocks::EMERALD_ORE()->getStateId()
-            ];
-        }
+        $this->replaceableBlocks = ThreadSafeArray::fromArray([
+            VanillaBlocks::STONE()->getStateId() => true,
+            VanillaBlocks::DIRT()->getStateId() => true,
+            VanillaBlocks::GRAVEL()->getStateId() => true
+        ]);
+        $this->replacingBlocks = ThreadSafeArray::fromArray([
+            VanillaBlocks::COAL_ORE()->getStateId(),
+            VanillaBlocks::IRON_ORE()->getStateId(),
+            VanillaBlocks::LAPIS_LAZULI_ORE()->getStateId(),
+            VanillaBlocks::REDSTONE_ORE()->getStateId(),
+            VanillaBlocks::GOLD_ORE()->getStateId(),
+            VanillaBlocks::DIAMOND_ORE()->getStateId(),
+            VanillaBlocks::EMERALD_ORE()->getStateId()
+        ]);
 
         $this->worldMinY = $world->getMinY();
         $this->worldMaxY = $world->getMaxY();
@@ -152,7 +148,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
                             }
                         }
 
-                        $randomBlockId = self::$replacingBlocks[array_rand(self::$replacingBlocks)];
+                        $randomBlockId = $this->replacingBlocks[mt_rand(0, count($this->replacingBlocks) - 1)];
                         assert($explorer->currentSubChunk instanceof SubChunk);
                         $explorer->currentSubChunk->setBlockStateId($x, $y, $z, $randomBlockId);
                     }
@@ -207,7 +203,7 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
 
         $explorer->moveToChunk($chunkX, $subChunkY, $chunkZ);
         if ($explorer->currentSubChunk instanceof SubChunk) {
-            return in_array($explorer->currentSubChunk->getBlockStateId($x, $y, $z), self::$replaceableBlocks, true);
+            return isset($this->replaceableBlocks[$explorer->currentSubChunk->getBlockStateId($x, $y, $z)]);
         }
         return false;
     }

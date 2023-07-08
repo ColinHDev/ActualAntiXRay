@@ -1,23 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ColinHDev\ActualAntiXRay\player;
 
 use ColinHDev\ActualAntiXRay\ResourceManager;
 use ColinHDev\ActualAntiXRay\tasks\ChunkRequestTask;
-use pocketmine\block\tile\Spawnable;
 use pocketmine\event\player\PlayerPostChunkSendEvent;
 use pocketmine\network\mcpe\cache\ChunkCache;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;
-use pocketmine\network\mcpe\protocol\BlockActorDataPacket;
-use pocketmine\network\mcpe\protocol\types\BlockPosition;
 use pocketmine\player\Player as PMMP_PLAYER;
 use pocketmine\player\UsedChunkStatus;
 use pocketmine\timings\Timings;
 use pocketmine\utils\Utils;
 use pocketmine\world\World;
 use ReflectionProperty;
-use function var_dump;
 
 class Player extends PMMP_PLAYER {
 
@@ -148,7 +146,6 @@ class Player extends PMMP_PLAYER {
      */
     public function request(ChunkCache $chunkCache, int $chunkX, int $chunkZ) : CompressBatchPromise{
         $property = new ReflectionProperty(ChunkCache::class, "world");
-        $property->setAccessible(true);
         /** @var World $world */
         $world = $property->getValue($chunkCache);
 
@@ -160,14 +157,11 @@ class Player extends PMMP_PLAYER {
         $chunkHash = World::chunkHash($chunkX, $chunkZ);
 
         $cacheProperty = new ReflectionProperty(ChunkCache::class, "caches");
-        $cacheProperty->setAccessible(true);
         /** @var CompressBatchPromise[] $caches */
         $caches = $cacheProperty->getValue($chunkCache);
 
         if(isset($caches[$chunkHash])){
-
             $property = new ReflectionProperty(ChunkCache::class, "hits");
-            $property->setAccessible(true);
             /** @var int $hits */
             $hits = $property->getValue($chunkCache);
             $property->setValue($chunkCache, $hits + 1);
@@ -176,7 +170,6 @@ class Player extends PMMP_PLAYER {
         }
 
         $property = new ReflectionProperty(ChunkCache::class, "misses");
-        $property->setAccessible(true);
         /** @var int $misses */
         $misses = $property->getValue($chunkCache);
         $property->setValue($chunkCache, $misses + 1);
@@ -187,7 +180,6 @@ class Player extends PMMP_PLAYER {
             $cacheProperty->setValue($chunkCache, $caches);
 
             $property = new ReflectionProperty(ChunkCache::class, "compressor");
-            $property->setAccessible(true);
             /** @var Compressor $compressor */
             $compressor = $property->getValue($chunkCache);
 
@@ -203,7 +195,6 @@ class Player extends PMMP_PLAYER {
                         $world->getLogger()->error("Failed preparing chunk $chunkX $chunkZ, retrying");
 
                         $property = new ReflectionProperty(ChunkCache::class, "caches");
-                        $property->setAccessible(true);
                         /** @var CompressBatchPromise[] $caches */
                         $caches = $property->getValue($chunkCache);
                         if(isset($caches[$chunkHash])){
@@ -228,7 +219,6 @@ class Player extends PMMP_PLAYER {
         $chunkHash = World::chunkHash($chunkX, $chunkZ);
 
         $property = new ReflectionProperty(ChunkCache::class, "caches");
-        $property->setAccessible(true);
         /** @var CompressBatchPromise[] $caches */
         $caches = $property->getValue($chunkCache);
 

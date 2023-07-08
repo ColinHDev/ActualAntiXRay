@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ColinHDev\ActualAntiXRay\listener;
 
 use ColinHDev\ActualAntiXRay\ResourceManager;
@@ -50,7 +52,7 @@ class DataPacketSendListener implements Listener {
                 // If the sent block does not match the existing block at that position, then someone uses this packet
                 // to send fake blocks to the client, for example through the InvMenu virion.
                 // Since we don't want to undermine his efforts, we will ignore this and don't send any block updates.
-                if ($blockMapping->toRuntimeId($world->getBlockAt($x, $y, $z)->getFullId()) !== $packet->blockRuntimeId) {
+                if ($blockMapping->toRuntimeId($world->getBlockAt($x, $y, $z)->getStateId()) !== $packet->blockRuntimeId) {
                     continue;
                 }
                 $worldName = $world->getFolderName();

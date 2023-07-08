@@ -1,0 +1,6 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Result of && is always true\\.$#"
+			count: 1
+			path: src/ColinHDev/ActualAntiXRay/player/Player.php

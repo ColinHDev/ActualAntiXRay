@@ -1,8 +1,8 @@
 name: ActualAntiXRay
 main: ColinHDev\ActualAntiXRay\ActualAntiXRay
-version: "1.0.5"
+version: "1.1.0"
 
-api: 4.16.0
+api: 5.0.0
 
 author: ColinHDev
 website: https://github.com/ColinHDev

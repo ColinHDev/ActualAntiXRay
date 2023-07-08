@@ -11,8 +11,7 @@ use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\ChunkRequestTask as PMMPChunkRequestTask;
 use pocketmine\network\mcpe\compression\CompressBatchPromise;
 use pocketmine\network\mcpe\compression\Compressor;
-use pocketmine\network\mcpe\convert\GlobalItemTypeDictionary;
-use pocketmine\network\mcpe\convert\RuntimeBlockMapping;
+use pocketmine\network\mcpe\convert\TypeConverter;
 use pocketmine\network\mcpe\protocol\LevelChunkPacket;
 use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializerContext;
@@ -164,8 +163,9 @@ class ChunkRequestTask extends PMMPChunkRequestTask {
         $chunk = $manager->getChunk($this->chunkX, $this->chunkZ);
         assert($chunk instanceof Chunk);
         $subCount = ChunkSerializer::getSubChunkCount($chunk);
-        $encoderContext = new PacketSerializerContext(GlobalItemTypeDictionary::getInstance()->getDictionary());
-        $payload = ChunkSerializer::serializeFullChunk($chunk, RuntimeBlockMapping::getInstance(), $encoderContext, $this->tiles);
+        $converter = TypeConverter::getInstance();
+        $encoderContext = new PacketSerializerContext($converter->getItemTypeDictionary());
+        $payload = ChunkSerializer::serializeFullChunk($chunk, $converter->getBlockTranslator(), $encoderContext, $this->tiles);
 
         $stream = new BinaryStream();
         PacketBatch::encodePackets($stream, $encoderContext, [LevelChunkPacket::create(new ChunkPosition($this->chunkX, $this->chunkZ), $subCount, false, null, $payload)]);

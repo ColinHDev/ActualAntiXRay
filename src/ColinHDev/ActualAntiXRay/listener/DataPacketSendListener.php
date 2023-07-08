@@ -8,7 +8,7 @@ use ColinHDev\ActualAntiXRay\ResourceManager;
 use pocketmine\event\Listener;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\math\Vector3;
-use pocketmine\network\mcpe\convert\RuntimeBlockMapping;
+use pocketmine\network\mcpe\convert\TypeConverter;
 use pocketmine\network\mcpe\NetworkSession;
 use pocketmine\network\mcpe\protocol\serializer\PacketSerializer;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
@@ -37,7 +37,7 @@ class DataPacketSendListener implements Listener {
         if (count($applyableTargets) === 0) {
             return;
         }
-        $blockMapping = RuntimeBlockMapping::getInstance();
+        $blockMapping = TypeConverter::getInstance()->getBlockTranslator();
         /** @var array<string, array<int, Vector3|null>> $positionsToUpdatePerWorld */
         $positionsToUpdatePerWorld = [];
         $packets = $event->getPackets();
@@ -52,7 +52,7 @@ class DataPacketSendListener implements Listener {
                 // If the sent block does not match the existing block at that position, then someone uses this packet
                 // to send fake blocks to the client, for example through the InvMenu virion.
                 // Since we don't want to undermine his efforts, we will ignore this and don't send any block updates.
-                if ($blockMapping->toRuntimeId($world->getBlockAt($x, $y, $z)->getStateId()) !== $packet->blockRuntimeId) {
+                if ($blockMapping->internalIdToNetworkId($world->getBlockAt($x, $y, $z)->getStateId()) !== $packet->blockRuntimeId) {
                     continue;
                 }
                 $worldName = $world->getFolderName();
